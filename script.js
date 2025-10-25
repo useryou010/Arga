@@ -37,8 +37,7 @@ function bukaAlbum(tipe) {
   modalBody.innerHTML = `
     <h2 style="color:gold;">${tipe === "kamu" ? "Foto Kamu 💛" : "Foto Kita 🤍"}</h2>
     <div class="album-content">
-      <div class="loader" id="loader"></div>
-      <img id="gambar" class="fade show" src="${fotoList[index]}" alt="Foto">
+      <img id="gambar" src="${fotoList[index]}" alt="Foto">
       <div class="nav-buttons">
         <button class="nav-btn back" id="prevBtn">Back</button>
         <button class="nav-btn next" id="nextBtn">Next</button>
@@ -49,38 +48,26 @@ function bukaAlbum(tipe) {
   const gambar = document.getElementById("gambar");
   const prevBtn = document.getElementById("prevBtn");
   const nextBtn = document.getElementById("nextBtn");
-  const loader = document.getElementById("loader");
-
-  // preload semua foto
-  const cache = [];
-  fotoList.forEach((src) => {
-    const img = new Image();
-    img.src = src;
-    cache.push(img);
-  });
 
   function updateTombol() {
     prevBtn.disabled = index === 0;
-    nextBtn.textContent = index === fotoList.length - 1 ? "Selesai ❤️" : "Next";
+
+    if (index === fotoList.length - 1) {
+      nextBtn.innerHTML = `Selesai ❤️`; // tanpa panah
+    } else {
+      nextBtn.innerHTML = `Next ▶`; // dengan panah
+    }
   }
 
   function tampilFoto() {
-    loader.style.display = "block";
-    gambar.classList.remove("show");
-
-    const newSrc = fotoList[index];
-    const imgTemp = cache[index] || new Image();
-    imgTemp.src = newSrc;
-
-    imgTemp.onload = () => {
-      gambar.src = newSrc;
+    gambar.style.opacity = 0;
+    setTimeout(() => {
+      gambar.src = fotoList[index];
       gambar.onload = () => {
-        loader.style.display = "none";
-        requestAnimationFrame(() => gambar.classList.add("show"));
+        gambar.style.opacity = 1;
       };
-    };
-
-    updateTombol();
+      updateTombol();
+    }, 100);
   }
 
   nextBtn.addEventListener("click", () => {
@@ -110,11 +97,10 @@ function tampilVideo() {
   modalBody.innerHTML = `
     <h2 style="color:gold;">Video Kenangan 🎥</h2>
     <div class="album-content">
-      <div class="loader" id="loader"></div>
-      <video id="videoPlayer" class="fade show" src="${videos[index]}" controls autoplay></video>
+      <video id="videoPlayer" src="${videos[index]}" controls autoplay></video>
       <div class="nav-buttons">
-        <button class="nav-btn" id="prevVideo">← Back</button>
-        <button class="nav-btn" id="nextVideo">Next →</button>
+        <button class="nav-btn back" id="prevVideo">Back</button>
+        <button class="nav-btn next" id="nextVideo">Next</button>
       </div>
     </div>
   `;
@@ -122,26 +108,26 @@ function tampilVideo() {
   const videoPlayer = document.getElementById("videoPlayer");
   const prevVideo = document.getElementById("prevVideo");
   const nextVideo = document.getElementById("nextVideo");
-  const loader = document.getElementById("loader");
 
   function updateTombolVideo() {
     prevVideo.disabled = index === 0;
-    nextVideo.textContent = index === videos.length - 1 ? "Selesai ❤️" : "Next →";
+
+    if (index === videos.length - 1) {
+      nextVideo.innerHTML = `Selesai ❤️`;
+    } else {
+      nextVideo.innerHTML = `Next ▶`;
+    }
   }
 
   function gantiVideo() {
-    loader.style.display = "block";
-    videoPlayer.classList.remove("show");
-    const newSrc = videos[index];
-    videoPlayer.src = newSrc;
-
-    videoPlayer.onloadeddata = () => {
-      loader.style.display = "none";
+    videoPlayer.style.opacity = 0;
+    setTimeout(() => {
+      videoPlayer.src = videos[index];
+      videoPlayer.load();
       videoPlayer.play();
-      requestAnimationFrame(() => videoPlayer.classList.add("show"));
-    };
-
-    updateTombolVideo();
+      videoPlayer.style.opacity = 1;
+      updateTombolVideo();
+    }, 150);
   }
 
   nextVideo.addEventListener("click", () => {

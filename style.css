@@ -166,7 +166,7 @@ body {
 }
 
 .nav-btn.next::after {
-  content: " ▶";
+  content: " ";
 }
 
 /* Efek fade */
