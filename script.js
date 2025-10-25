@@ -40,7 +40,7 @@ function bukaAlbum(tipe) {
       <img id="gambar" src="${fotoList[index]}" alt="Foto">
       <div class="nav-buttons">
         <button class="nav-btn back" id="prevBtn">Back</button>
-        <button class="nav-btn next" id="nextBtn">Next</button>
+        <button class="nav-btn next" id="nextBtn">Next ▶</button>
       </div>
     </div>
   `;
@@ -51,11 +51,10 @@ function bukaAlbum(tipe) {
 
   function updateTombol() {
     prevBtn.disabled = index === 0;
-
     if (index === fotoList.length - 1) {
       nextBtn.innerHTML = `Selesai ❤️`; // tanpa panah
     } else {
-      nextBtn.innerHTML = `Next ▶`; // dengan panah
+      nextBtn.innerHTML = `Next ▶`; // ada panah
     }
   }
 
@@ -67,7 +66,7 @@ function bukaAlbum(tipe) {
         gambar.style.opacity = 1;
       };
       updateTombol();
-    }, 100);
+    }, 80);
   }
 
   nextBtn.addEventListener("click", () => {
@@ -100,7 +99,7 @@ function tampilVideo() {
       <video id="videoPlayer" src="${videos[index]}" controls autoplay></video>
       <div class="nav-buttons">
         <button class="nav-btn back" id="prevVideo">Back</button>
-        <button class="nav-btn next" id="nextVideo">Next</button>
+        <button class="nav-btn next" id="nextVideo">Next ▶</button>
       </div>
     </div>
   `;
@@ -111,11 +110,10 @@ function tampilVideo() {
 
   function updateTombolVideo() {
     prevVideo.disabled = index === 0;
-
     if (index === videos.length - 1) {
-      nextVideo.innerHTML = `Selesai ❤️`;
+      nextVideo.innerHTML = `Selesai ❤️`; // tanpa panah
     } else {
-      nextVideo.innerHTML = `Next ▶`;
+      nextVideo.innerHTML = `Next ▶`; // dengan panah
     }
   }
 
@@ -127,7 +125,7 @@ function tampilVideo() {
       videoPlayer.play();
       videoPlayer.style.opacity = 1;
       updateTombolVideo();
-    }, 150);
+    }, 120);
   }
 
   nextVideo.addEventListener("click", () => {
