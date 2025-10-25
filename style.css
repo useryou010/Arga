@@ -159,3 +159,20 @@ body {
   box-shadow: none;
   opacity: 0.6;
 }
+
+/* Perbaiki tampilan panah agar muncul di semua perangkat */
+.nav-btn {
+  font-family: "Poppins", sans-serif;
+  font-size: 1em;
+  line-height: 1;
+}
+
+/* Efek fade loading ringan */
+.fade {
+  opacity: 0;
+  transition: opacity 0.25s ease-in-out;
+}
+
+.fade.show {
+  opacity: 1;
+}

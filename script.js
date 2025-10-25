@@ -37,7 +37,7 @@ function bukaAlbum(tipe) {
   modalBody.innerHTML = `
     <h2 style="color:gold;">${tipe === "kamu" ? "Foto Kamu 💛" : "Foto Kita 🤍"}</h2>
     <div class="album-content">
-      <img id="gambar" src="${fotoList[index]}" alt="Foto">
+      <img id="gambar" class="fade show" src="${fotoList[index]}" alt="Foto">
       <div class="nav-buttons">
         <button class="nav-btn" id="prevBtn">⮜ Back</button>
         <button class="nav-btn" id="nextBtn">Next ⮞</button>
@@ -49,21 +49,32 @@ function bukaAlbum(tipe) {
   const prevBtn = document.getElementById("prevBtn");
   const nextBtn = document.getElementById("nextBtn");
 
+  // Preload semua foto agar perpindahan cepat
+  fotoList.forEach((src) => {
+    const img = new Image();
+    img.src = src;
+  });
+
   function updateTombol() {
     prevBtn.disabled = index === 0;
-    nextBtn.textContent =
-      index === fotoList.length - 1 ? "Selesai ❤️" : "Next ⮞";
+    nextBtn.textContent = index === fotoList.length - 1 ? "Selesai ❤️" : "Next ⮞";
   }
 
   function tampilFoto() {
-    gambar.style.opacity = 0;
-    setTimeout(() => {
-      gambar.src = fotoList[index];
-      gambar.onload = () => {
-        gambar.style.opacity = 1;
-      };
-      updateTombol();
-    }, 150);
+    gambar.classList.remove("show");
+    gambar.classList.add("fade");
+    const newSrc = fotoList[index];
+
+    const imgTemp = new Image();
+    imgTemp.src = newSrc;
+    imgTemp.onload = () => {
+      gambar.src = newSrc;
+      requestAnimationFrame(() => {
+        gambar.classList.add("show");
+      });
+    };
+
+    updateTombol();
   }
 
   nextBtn.addEventListener("click", () => {
@@ -93,7 +104,7 @@ function tampilVideo() {
   modalBody.innerHTML = `
     <h2 style="color:gold;">Video Kenangan 🎥</h2>
     <div class="album-content">
-      <video id="videoPlayer" src="${videos[index]}" controls autoplay></video>
+      <video id="videoPlayer" class="fade show" src="${videos[index]}" controls autoplay></video>
       <div class="nav-buttons">
         <button class="nav-btn" id="prevVideo">⮜ Back</button>
         <button class="nav-btn" id="nextVideo">Next ⮞</button>
@@ -107,19 +118,24 @@ function tampilVideo() {
 
   function updateTombolVideo() {
     prevVideo.disabled = index === 0;
-    nextVideo.textContent =
-      index === videos.length - 1 ? "Selesai ❤️" : "Next ⮞";
+    nextVideo.textContent = index === videos.length - 1 ? "Selesai ❤️" : "Next ⮞";
   }
 
   function gantiVideo() {
-    videoPlayer.style.opacity = 0;
-    setTimeout(() => {
-      videoPlayer.src = videos[index];
-      videoPlayer.load();
+    videoPlayer.classList.remove("show");
+    videoPlayer.classList.add("fade");
+
+    const newSrc = videos[index];
+    videoPlayer.src = newSrc;
+
+    videoPlayer.onloadeddata = () => {
       videoPlayer.play();
-      videoPlayer.style.opacity = 1;
-      updateTombolVideo();
-    }, 200);
+      requestAnimationFrame(() => {
+        videoPlayer.classList.add("show");
+      });
+    };
+
+    updateTombolVideo();
   }
 
   nextVideo.addEventListener("click", () => {
