@@ -26,14 +26,13 @@ function tampilMenu() {
 function bukaAlbum(tipe) {
   const totalFoto = tipe === "kamu" ? 28 : 41;
   const prefix = tipe === "kamu" ? "ft one/" : "ft two/2.";
-  
-  // buat array foto berurutan tanpa duplikat
+
   const fotoList = [];
   for (let i = 1; i <= totalFoto; i++) {
     fotoList.push(`${prefix}${i}.jpeg`);
   }
 
-  let index = 0; // mulai dari 0 biar urutan array konsisten
+  let index = 0;
 
   modalBody.innerHTML = `
     <h2 style="color:gold;">${tipe === "kamu" ? "Foto Kamu 💛" : "Foto Kita 🤍"}</h2>
@@ -52,20 +51,19 @@ function bukaAlbum(tipe) {
 
   function updateTombol() {
     prevBtn.disabled = index === 0;
-    if (index === fotoList.length - 1) {
-      nextBtn.textContent = "Selesai ❤️";
-    } else {
-      nextBtn.textContent = "Next ⮞";
-    }
+    nextBtn.textContent =
+      index === fotoList.length - 1 ? "Selesai ❤️" : "Next ⮞";
   }
 
   function tampilFoto() {
     gambar.style.opacity = 0;
     setTimeout(() => {
       gambar.src = fotoList[index];
-      gambar.style.opacity = 1;
+      gambar.onload = () => {
+        gambar.style.opacity = 1;
+      };
       updateTombol();
-    }, 300);
+    }, 150);
   }
 
   nextBtn.addEventListener("click", () => {
@@ -121,7 +119,7 @@ function tampilVideo() {
       videoPlayer.play();
       videoPlayer.style.opacity = 1;
       updateTombolVideo();
-    }, 300);
+    }, 200);
   }
 
   nextVideo.addEventListener("click", () => {

@@ -8,14 +8,24 @@ body {
   overflow: hidden;
 }
 
+/* Tengahin container utama */
+.container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
 .judul {
-  margin-top: 15%;
-  font-size: 2.2em;
+  margin: 0 0 30px 0;
+  font-size: 2em; /* sedikit lebih kecil biar muat di layar kecil */
   background: linear-gradient(90deg, #d4af37, #b8860b);
   -webkit-background-clip: text;
   color: transparent;
   text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+  white-space: nowrap; /* <<< tambahkan ini */
 }
+
 
 .btn {
   background: linear-gradient(90deg, #b8860b, #d4af37);
@@ -109,7 +119,7 @@ body {
   border-radius: 10px;
   margin: 15px 0;
   opacity: 1;
-  transition: opacity 0.4s ease-in-out;
+  transition: opacity 0.3s ease-in-out;
   box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
 }
 
@@ -148,28 +158,4 @@ body {
   cursor: not-allowed;
   box-shadow: none;
   opacity: 0.6;
-}
-
-/* Animasi lembut */
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes scaleIn {
-  from { transform: scale(0.8); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
-}
-
-/* Responsif */
-@media (max-width: 600px) {
-  .modal-content {
-    width: 95%;
-    padding: 20px;
-  }
-  .album-content img,
-  .album-content video {
-    width: 100%;
-    max-height: 280px;
-  }
 }
