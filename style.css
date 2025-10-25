@@ -160,14 +160,16 @@ body {
   opacity: 0.6;
 }
 
-/* Perbaiki tampilan panah agar muncul di semua perangkat */
-.nav-btn {
-  font-family: "Poppins", sans-serif;
-  font-size: 1em;
-  line-height: 1;
+/* Perbaiki tombol panah agar universal */
+.nav-btn.back::before {
+  content: "◀ ";
 }
 
-/* Efek fade loading ringan */
+.nav-btn.next::after {
+  content: " ▶";
+}
+
+/* Efek fade */
 .fade {
   opacity: 0;
   transition: opacity 0.25s ease-in-out;
@@ -175,4 +177,21 @@ body {
 
 .fade.show {
   opacity: 1;
+}
+
+/* Indikator loading ringan */
+.loader {
+  border: 3px solid rgba(255, 215, 0, 0.3);
+  border-top: 3px solid gold;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  animation: spin 1s linear infinite;
+  margin: 15px auto;
+  display: none;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
