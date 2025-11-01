@@ -12,10 +12,13 @@
     <button class="btn" id="btnMulai">Mulai</button>
   </div>
 
-  <!-- Modal -->
-  <div class="modal" id="modal">
+  <!-- Audio background: gunakan URL-encoded nama file jika ada spasi -->
+  <audio id="bgMusic" src="music/disarankan%20di%20bandung%20.mp3" loop></audio>
+
+  <!-- Modal utama (dipakai untuk surat & menu & galeri) -->
+  <div class="modal" id="modal" aria-hidden="true">
     <div class="modal-content">
-      <span class="close" id="closeBtn">&times;</span>
+      <span class="close" id="closeBtn" aria-label="Tutup">&times;</span>
       <div id="modal-body"></div>
     </div>
   </div>

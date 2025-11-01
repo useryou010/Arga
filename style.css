@@ -1,6 +1,9 @@
+/* ==========================
+   GAYA DASAR
+========================== */
 body {
   margin: 0;
-  background: radial-gradient(circle at top, #000, #111);
+  background: radial-gradient(circle at top, #000, #0a0a0a);
   color: #fff;
   font-family: "Poppins", sans-serif;
   text-align: center;
@@ -8,67 +11,74 @@ body {
   overflow: hidden;
 }
 
-/* Tengahin container utama */
+/* ==========================
+   CONTAINER UTAMA (LAYAR DEPAN)
+========================== */
 .container {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+  text-align: center;
 }
 
 .judul {
   margin: 0 0 30px 0;
-  font-size: 2em; /* sedikit lebih kecil biar muat di layar kecil */
-  background: linear-gradient(90deg, #d4af37, #b8860b);
+  font-size: 2.2em;
+  background: linear-gradient(90deg, #ffd700, #b8860b);
   -webkit-background-clip: text;
   color: transparent;
-  text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
-  white-space: nowrap; /* <<< tambahkan ini */
+  text-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+  white-space: nowrap;
 }
 
-
+/* ==========================
+   TOMBOL MULAI
+========================== */
 .btn {
-  background: linear-gradient(90deg, #b8860b, #d4af37);
+  background: linear-gradient(90deg, #b8860b, #ffd700);
   border: none;
-  border-radius: 30px;
-  padding: 15px 40px;
+  border-radius: 35px;
+  padding: 15px 45px;
   color: black;
   font-weight: bold;
   font-size: 1.1em;
   cursor: pointer;
   box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
-  transition: 0.3s;
+  transition: all 0.3s ease;
 }
 
 .btn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 0 25px rgba(255, 215, 0, 0.7);
+  transform: scale(1.07);
+  box-shadow: 0 0 25px rgba(255, 215, 0, 0.8);
 }
 
-/* Modal */
+/* ==========================
+   MODAL UTAMA
+========================== */
 .modal {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.85);
+  background: rgba(0, 0, 0, 0.9);
   justify-content: center;
   align-items: center;
   padding: 10px;
   animation: fadeIn 0.3s ease-in-out;
+  z-index: 999;
 }
 
 .modal-content {
   background: #0b0b0b;
-  border-radius: 15px;
+  border-radius: 20px;
   border: 2px solid gold;
-  box-shadow: 0 0 20px gold;
+  box-shadow: 0 0 25px gold;
   width: 90%;
   max-width: 600px;
-  height: auto;
   max-height: 90vh;
   overflow: hidden;
   position: relative;
-  padding: 30px 20px;
+  padding: 30px 25px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -78,30 +88,95 @@ body {
   animation: scaleIn 0.25s ease-in-out;
 }
 
-.close {
-  position: absolute;
-  top: 10px;
-  right: 15px;
-  font-size: 26px;
-  color: gold;
-  cursor: pointer;
+/* Scrollbar khusus untuk modal surat */
+.modal-content.surat {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: gold #111;
+  padding-right: 10px;
 }
 
-/* Tombol album */
+.modal-content.surat::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-content.surat::-webkit-scrollbar-thumb {
+  background: gold;
+  border-radius: 4px;
+}
+
+.modal-content.surat::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Gaya khusus untuk konten surat */
+.modal-content.surat .letter {
+  width: 92%;
+  max-width: 520px;
+  background: linear-gradient(180deg, #111 0%, #0b0b0b 100%);
+  border-radius: 12px;
+  border: 2px solid rgba(255, 215, 0, 0.12);
+  padding: 24px;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.06);
+}
+
+.modal-content.surat h3 {
+  color: gold;
+  margin: 0 0 20px 0;
+  text-align: center;
+  font-size: 1.4em;
+}
+
+.modal-content.surat p {
+  color: #fff;
+  line-height: 1.7;
+  margin: 15px 0;
+  text-align: justify;
+  font-size: 1em;
+}
+
+.close {
+  position: absolute;
+  top: 12px;
+  right: 18px;
+  font-size: 28px;
+  color: gold;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.close:hover {
+  transform: scale(1.2);
+  text-shadow: 0 0 10px gold;
+}
+
+/* ==========================
+   TOMBOL PILIH ALBUM
+========================== */
 .album-btn {
-  background: linear-gradient(90deg, #b8860b, #d4af37);
+  background: linear-gradient(90deg, #b8860b, #ffd700);
   border: none;
   border-radius: 25px;
   padding: 12px 20px;
   margin: 10px;
-  width: 70%;
+  width: 75%;
   color: black;
   font-weight: bold;
   cursor: pointer;
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+  transition: 0.3s;
 }
 
-/* Isi gambar / video */
+.album-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 25px rgba(255, 215, 0, 0.7);
+}
+
+/* ==========================
+   AREA FOTO & VIDEO
+========================== */
 .album-content {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -109,43 +184,99 @@ body {
   width: 100%;
   min-height: 100%;
   box-sizing: border-box;
+  gap: 10px;
+}
+
+/* ==========================
+   FOTO WRAPPER (DENGAN LOADER)
+========================== */
+.foto-wrapper {
+  position: relative;
+  width: 90%;
+  max-height: 380px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .album-content img,
 .album-content video {
-  width: 90%;
-  max-height: 350px;
+  width: 100%;
+  max-height: 370px;
   object-fit: contain;
-  border-radius: 10px;
+  border-radius: 12px;
   margin: 15px 0;
+  transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
   opacity: 1;
-  transition: opacity 0.3s ease-in-out;
-  box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
 }
 
-/* Tombol navigasi foto/video */
+.album-content video {
+  background: #000;
+  outline: none;
+  border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+/* ==========================
+   LOADER ANIMASI
+========================== */
+.loader-overlay {
+  position: absolute;
+  inset: 0;
+  display: none;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 10px;
+  z-index: 5;
+  transition: opacity 0.3s ease;
+}
+
+.loader-overlay.active {
+  display: flex;
+}
+
+.loader {
+  border: 4px solid rgba(255, 215, 0, 0.25);
+  border-top: 4px solid gold;
+  border-radius: 50%;
+  width: 55px;
+  height: 55px;
+  animation: spin 1s linear infinite;
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ==========================
+   TOMBOL NEXT & BACK
+========================== */
 .nav-buttons {
   display: flex;
   justify-content: center;
-  gap: 20px;
+  gap: 25px;
   margin-top: 10px;
   width: 100%;
 }
 
 .nav-btn {
-  background: linear-gradient(90deg, #d4af37, #b8860b);
+  background: linear-gradient(90deg, #ffd700, #b8860b);
   border: none;
-  border-radius: 20px;
-  padding: 10px 30px;
+  border-radius: 25px;
+  padding: 10px 35px;
   font-weight: bold;
   cursor: pointer;
   color: black;
-  transition: 0.2s ease;
+  transition: all 0.25s ease;
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
 }
 
 .nav-btn:hover:not(:disabled) {
-  transform: scale(1.05);
-  box-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+  transform: scale(1.08);
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
 }
 
 .nav-btn:active:not(:disabled) {
@@ -156,42 +287,70 @@ body {
   background: gray;
   color: #222;
   cursor: not-allowed;
-  box-shadow: none;
   opacity: 0.6;
+  box-shadow: none;
 }
 
-/* Perbaiki tombol panah agar universal */
-.nav-btn.back::before {
-  content: "◀ ";
-}
-
-.nav-btn.next::after {
-  content: " ";
-}
-
-/* Efek fade */
+/* ==========================
+   ANIMASI FOTO & VIDEO
+========================== */
 .fade {
   opacity: 0;
-  transition: opacity 0.25s ease-in-out;
+  transition: opacity 0.5s ease-in-out, transform 0.4s ease-in-out;
+  transform: scale(0.97);
 }
 
 .fade.show {
   opacity: 1;
+  transform: scale(1);
 }
 
-/* Indikator loading ringan */
-.loader {
-  border: 3px solid rgba(255, 215, 0, 0.3);
-  border-top: 3px solid gold;
-  border-radius: 50%;
-  width: 30px;
-  height: 30px;
-  animation: spin 1s linear infinite;
-  margin: 15px auto;
-  display: none;
+/* ==========================
+   ANIMASI MODAL
+========================== */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+@keyframes scaleIn {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* ==========================
+   RESPONSIVE DESIGN
+========================== */
+@media (max-width: 600px) {
+  .judul {
+    font-size: 1.7em;
+  }
+
+  .btn {
+    padding: 12px 35px;
+    font-size: 1em;
+  }
+
+  .modal-content {
+    padding: 20px;
+    gap: 10px;
+  }
+
+  .album-btn {
+    width: 85%;
+    font-size: 0.95em;
+  }
+
+  .nav-btn {
+    padding: 8px 25px;
+  }
+
+  .foto-wrapper {
+    max-height: 300px;
+  }
+
+  .album-content img,
+  .album-content video {
+    max-height: 280px;
+  }
 }
