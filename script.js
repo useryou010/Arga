@@ -8,21 +8,37 @@ const bgMusic = document.getElementById("bgMusic");
 // Track current song and section
 let currentSong = bgMusic && bgMusic.getAttribute("src") ? decodeURIComponent(bgMusic.getAttribute("src")) : null;
 let currentSection = "birthdayLove"; // birthdayLove, letter, memorySelection, photos, us, video
+let previousSection = null; // store previous section when entering memorySelection
 
-// Function to show birthday love screen
+// Function to show birthday love screen - used as direct redirect from letter
 function showBirthdayLove() {
+  currentSection = "birthdayLove";
   modal.style.display = "none";
   modalBody.innerHTML = "";
-  currentSection = "birthdayLove";
   // Return to default song
   playMusic("music/disarankan di bandung .mp3");
 }
 
-// Function to show letter page
+// Function to show letter page with its own close handler
 function showDearMyEndlessLove() {
   currentSection = "letter";
   modal.style.display = "flex";
   tampilSurat();
+  
+  // Set direct-to-home close handler specifically for letter page
+  if (closeBtn) {
+    // Remove any existing listeners first
+    closeBtn.replaceWith(closeBtn.cloneNode(true));
+    // Get fresh reference after clone
+    const freshCloseBtn = document.querySelector('.close');
+    if (freshCloseBtn) {
+      freshCloseBtn.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        showBirthdayLove();
+      };
+    }
+  }
 }
 
 // Fungsi untuk memainkan musik dan menghentikan lagu sebelumnya
@@ -58,32 +74,38 @@ btnMulai.addEventListener("click", () => {
   tampilSurat();
 });
 
-closeBtn.addEventListener("click", () => {
-  // Hapus class surat dari modal jika ada
-  const modalContent = document.querySelector('.modal-content');
-  if (modalContent) modalContent.classList.remove('surat');
-
-  // Handle navigation based on current section
-  switch (currentSection) {
-    case "memorySelection":
-      // From "Pilih Kenangan" go to letter page
-      showDearMyEndlessLove();
-      break;
-    case "letter":
-      // From letter page go to birthday love
-      showBirthdayLove();
-      break;
-    case "photos":
-    case "us":
-    case "video":
-      // From album/video pages go to memory selection
+// Set default close handler for non-letter pages
+if (closeBtn) {
+  closeBtn.onclick = function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Only handle non-letter pages here since letter has its own handler
+    if (currentSection === "memorySelection") {
+      if (previousSection === "letter") {
+        showDearMyEndlessLove();
+      } else {
+        showBirthdayLove();
+      }
+    } else if (currentSection !== "letter") {
+      // For photos/us/video go to memory selection
       showMemorySelection();
-      break;
-  }
-});
+    }
+  };
+}
 
 function tampilMenu() {
+  // remember where we came from so X on memory selection can return
+  previousSection = currentSection;
   currentSection = "memorySelection";
+  
+  // Tampilkan kembali tombol close yang mungkin tersembunyi
+  const modalContent = document.querySelector('.modal-content');
+  if (modalContent) {
+    const closeBtn = modalContent.querySelector('.close');
+    if (closeBtn) closeBtn.style.display = '';
+  }
+  
   modalBody.innerHTML = `
     <h2 style="color:var(--accent);">Pilih Kenangan</h2>
     <button class="album-btn" onclick="bukaAlbum('kamu')">ur photo's </button>
@@ -96,7 +118,12 @@ function tampilMenu() {
 function tampilSurat() {
   // Tambahkan class surat ke modal-content untuk scrolling
   const modalContent = document.querySelector('.modal-content');
-  if (modalContent) modalContent.classList.add('surat');
+  if (modalContent) {
+    modalContent.classList.add('surat');
+    // Sembunyikan tombol close di halaman letter
+    const closeBtn = modalContent.querySelector('.close');
+    if (closeBtn) closeBtn.style.display = 'none';
+  }
 
   modalBody.innerHTML = `
     <style>
@@ -184,6 +211,14 @@ function tampilSurat() {
 function bukaAlbum(tipe) {
   // Set current section
   currentSection = tipe === 'kamu' ? 'photos' : 'us';
+  
+  // Tampilkan kembali tombol close yang mungkin tersembunyi
+  const modalContent = document.querySelector('.modal-content');
+  if (modalContent) {
+    const closeBtn = modalContent.querySelector('.close');
+    if (closeBtn) closeBtn.style.display = '';
+  }
+  
   // Mainkan lagu sesuai tipe album
   ensureBgMusicSetup();
   if (tipe === 'kamu') {
@@ -279,6 +314,14 @@ function bukaAlbum(tipe) {
 // ================= VIDEO ==================
 function tampilVideo() {
   currentSection = "video";
+  
+  // Tampilkan kembali tombol close yang mungkin tersembunyi
+  const modalContent = document.querySelector('.modal-content');
+  if (modalContent) {
+    const closeBtn = modalContent.querySelector('.close');
+    if (closeBtn) closeBtn.style.display = '';
+  }
+  
   const videos = ["vt/vt 1.mp4", "vt/vt 2.mp4"];
   let index = 0;
 
