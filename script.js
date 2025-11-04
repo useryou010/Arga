@@ -5,32 +5,89 @@ const closeBtn = document.getElementById("closeBtn");
 const modalBody = document.getElementById("modal-body");
 const bgMusic = document.getElementById("bgMusic");
 
-// Track current song to avoid unnecessary reloads
+// Track current song and section
 let currentSong = bgMusic && bgMusic.getAttribute("src") ? decodeURIComponent(bgMusic.getAttribute("src")) : null;
+let currentSection = "birthdayLove"; // birthdayLove, letter, memorySelection, photos, us, video
+
+// Function to show birthday love screen
+function showBirthdayLove() {
+  modal.style.display = "none";
+  modalBody.innerHTML = "";
+  currentSection = "birthdayLove";
+  // Return to default song
+  playMusic("music/disarankan di bandung .mp3");
+}
+
+// Function to show letter page
+function showDearMyEndlessLove() {
+  currentSection = "letter";
+  modal.style.display = "flex";
+  tampilSurat();
+}
+
+// Fungsi untuk memainkan musik dan menghentikan lagu sebelumnya
+function playMusic(filename) {
+  if (!bgMusic) return;
+  
+  // Hentikan lagu yang sedang berjalan
+  bgMusic.pause();
+  bgMusic.currentTime = 0;
+  
+  // Set lagu baru dan mainkan
+  currentSong = filename;
+  bgMusic.src = encodeURI(filename);
+  bgMusic.load();
+  bgMusic.play().catch(() => {/* ignore autoplay restrictions */});
+}
+
+// Fungsi untuk menampilkan halaman Pilih Kenangan dengan musik default
+function showMemorySelection() {
+  // Tampilkan menu pilihan kenangan
+  tampilMenu();
+  // Mainkan lagu default
+  playMusic("music/disarankan di bandung .mp3");
+}
+
+// Play default song on page load
+ensureBgMusicSetup();
+playMusic("music/disarankan di bandung .mp3");
 
 btnMulai.addEventListener("click", () => {
   // Buka modal dan tampilkan halaman surat terlebih dahulu
   modal.style.display = "flex";
-  // Pastikan bgMusic siap dan set lagu default (menggunakan src dengan spasi normal)
-  ensureBgMusicSetup();
-  gantiLagu("music/disarankan di bandung .mp3");
   tampilSurat();
 });
 
 closeBtn.addEventListener("click", () => {
-  modal.style.display = "none";
-  modalBody.innerHTML = "";
-  // Hapus class surat dari modal saat ditutup
+  // Hapus class surat dari modal jika ada
   const modalContent = document.querySelector('.modal-content');
   if (modalContent) modalContent.classList.remove('surat');
-  // intentionally do NOT pause or reset bgMusic so it continues across navigasi menu
+
+  // Handle navigation based on current section
+  switch (currentSection) {
+    case "memorySelection":
+      // From "Pilih Kenangan" go to letter page
+      showDearMyEndlessLove();
+      break;
+    case "letter":
+      // From letter page go to birthday love
+      showBirthdayLove();
+      break;
+    case "photos":
+    case "us":
+    case "video":
+      // From album/video pages go to memory selection
+      showMemorySelection();
+      break;
+  }
 });
 
 function tampilMenu() {
+  currentSection = "memorySelection";
   modalBody.innerHTML = `
-    <h2 style="color:gold;">Pilih Kenangan</h2>
-    <button class="album-btn" onclick="bukaAlbum('kamu')">ur photo's 💛</button>
-    <button class="album-btn" onclick="bukaAlbum('kita')">us 🤍</button>
+    <h2 style="color:var(--accent);">Pilih Kenangan</h2>
+    <button class="album-btn" onclick="bukaAlbum('kamu')">ur photo's </button>
+    <button class="album-btn" onclick="bukaAlbum('kita')">us 👩🏻‍❤️‍👨🏻</button>
     <button class="album-btn" onclick="tampilVideo()">w memo 🎥</button>
   `;
 }
@@ -50,16 +107,16 @@ function tampilSurat() {
         max-width: 520px; 
         background: linear-gradient(180deg,#111 0%, #0b0b0b 100%); 
         border-radius: 12px; 
-        border: 2px solid rgba(255,215,0,0.12); 
+        border: 2px solid rgba(var(--accent-rgba), 0.12); 
         padding: 28px 24px; 
-        box-shadow: 0 0 20px rgba(255,215,0,0.06);
+        box-shadow: 0 0 20px rgba(var(--accent-rgba), 0.06);
       }
       .letter h3 { 
-        color: gold; 
+        color: var(--accent); 
         margin: 0 0 25px 0; 
         text-align: center; 
         font-size: 1.4em;
-        text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+        text-shadow: 0 0 10px rgba(var(--accent-rgba), 0.28);
       }
       .letter p { 
         color: #fff; 
@@ -77,7 +134,7 @@ function tampilSurat() {
     <div class="surat-content">
       <div class="envelope">
         <div class="letter surat-anim">
-          <h3>dear my endless love..</h3>
+          <h3>dear my endless love... 💝</h3>
           <p>so sorry for my fault, n u know im not perfect actually kinda i hate myself, a lott a time. and I chose u because u determine the color in my life.</p>
 
           <p>mungkin aku tidak sesempurna itu dan aku tidak bisa selalu membahagiakan semua orang, perlu kamu ketahui aku akan mengusahakan apapun untukmu.</p>
@@ -102,7 +159,7 @@ function tampilSurat() {
 
           <p>aku ingin mengatakan pada hawa bahwa aku rindu pada seorang kaum nya yang diciptakan sesempurna mungkin oleh sang pencipta, dan diturunkan kebumi melalui rahim ibunya yang kuat beserta cinta ayahnya yang abadi.</p>
 
-          <p>selamat ulang tahun kiya,i always loving u.</p>
+          <p>selamat ulang tahun kiya, i always loving u.</p>
           <div style="text-align:center;">
             <button class="btn lanjut-btn" id="lanjutBtn">Lanjut ➜</button>
           </div>
@@ -125,12 +182,14 @@ function tampilSurat() {
 
 // ================= FOTO ==================
 function bukaAlbum(tipe) {
-  // pastikan bg music disesuaikan saat membuka album foto
+  // Set current section
+  currentSection = tipe === 'kamu' ? 'photos' : 'us';
+  // Mainkan lagu sesuai tipe album
   ensureBgMusicSetup();
   if (tipe === 'kamu') {
-    gantiLagu('music/ini abadi perunggu.mp3');
+    playMusic('music/ini abadi perunggu.mp3');
   } else {
-    gantiLagu('music/abadi.mp3');
+    playMusic('music/abadi.mp3');
   }
   const totalFoto = tipe === "kamu" ? 28 : 41;
   const prefix = tipe === "kamu" ? "ft one/" : "ft two/2.";
@@ -143,7 +202,7 @@ function bukaAlbum(tipe) {
   let index = 0;
 
   modalBody.innerHTML = `
-    <h2 style="color:gold;">${tipe === "kamu" ? "ur photo's 💛" : "us 🤍"}</h2>
+  <h2 style="color:var(--accent);">${tipe === "kamu" ? "ur photo's " : "us 👩🏻‍❤️‍👨🏻"}</h2>
     <div class="album-content">
       <div class="foto-wrapper">
         <div class="loader-overlay" id="loaderOverlay">
@@ -202,9 +261,8 @@ function bukaAlbum(tipe) {
       index++;
       tampilFoto();
     } else {
-      // selesai melihat album -> kembali ke menu dan kembalikan lagu default
-      gantiLagu('music/disarankan di bandung .mp3');
-      tampilMenu();
+      // selesai melihat album -> kembali ke menu dengan musik default
+      showMemorySelection();
     }
   });
 
@@ -220,15 +278,16 @@ function bukaAlbum(tipe) {
 
 // ================= VIDEO ==================
 function tampilVideo() {
+  currentSection = "video";
   const videos = ["vt/vt 1.mp4", "vt/vt 2.mp4"];
   let index = 0;
 
   // saat membuka halaman video, ganti lagu ke lagu video
   ensureBgMusicSetup();
-  gantiLagu("music/everything u are .mp3");
+  playMusic("music/everything u are .mp3");
 
   modalBody.innerHTML = `
-    <h2 style="color:gold;">w memo 🎥</h2>
+  <h2 style="color:var(--accent);">w memo 🎥</h2>
     <div class="album-content">
       <div class="foto-wrapper">
         <div class="loader-overlay" id="loaderOverlay">
@@ -276,9 +335,8 @@ function tampilVideo() {
       index++;
       gantiVideo();
     } else {
-      // selesai menonton video -> kembali ke menu dan kembalikan lagu default
-      gantiLagu('music/disarankan di bandung .mp3');
-      tampilMenu();
+      // selesai menonton video -> kembali ke menu dengan musik default
+      showMemorySelection();
     }
   });
 
