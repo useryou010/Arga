@@ -4,6 +4,169 @@ const modal = document.getElementById("modal");
 const closeBtn = document.getElementById("closeBtn");
 const modalBody = document.getElementById("modal-body");
 const bgMusic = document.getElementById("bgMusic");
+const stickerContainer = document.getElementById("stickerContainer");
+
+// Track sticker rotation
+let stickerRotationInterval = null;
+let usedStickerIndices = [];
+const animations = ['float', 'swing', 'bounce', 'drift'];
+
+// Initialize stickers for memory selection page
+function initStickers() {
+  // Clear any existing rotation interval
+  if (stickerRotationInterval) {
+    clearInterval(stickerRotationInterval);
+    stickerRotationInterval = null;
+  }
+
+  // Clear existing stickers first
+  stickerContainer.innerHTML = '';
+  stickerContainer.style.display = 'block';
+  
+  const TOTAL_STICKERS = 21;
+  const STICKERS_PER_BATCH = 6; // Show 6 stickers at once
+  const MIN_DISTANCE = 100; // Minimum pixels between stickers
+  const placedStickers = []; // Track sticker positions
+  
+  // Define safe zones for sticker placement (avoid modal area)
+  const safeZones = [
+    { left: 5, width: 25, top: 5, height: 90 },     // Left side
+    { right: 5, width: 25, top: 5, height: 90 },    // Right side
+    { left: 30, width: 40, top: 5, height: 20 },    // Top
+    { left: 30, width: 40, bottom: 5, height: 20 }  // Bottom
+  ];
+
+  // Helper to get random number between min and max
+  const random = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+  
+  // Check if position overlaps with existing stickers
+  function isOverlapping(x, y, size) {
+    return placedStickers.some(sticker => {
+      const dx = x - sticker.x;
+      const dy = y - sticker.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      return distance < (size + sticker.size) / 2 + MIN_DISTANCE;
+    });
+  }
+  
+  // Get random position in viewport coordinates
+  function getRandomPosition(zone) {
+    const viewWidth = window.innerWidth;
+    const viewHeight = window.innerHeight;
+    
+    let x, y;
+    if (zone.right !== undefined) {
+      x = viewWidth - (viewWidth * (zone.right + zone.width) / 100) + 
+          random(0, viewWidth * zone.width / 100);
+    } else {
+      x = viewWidth * zone.left / 100 + random(0, viewWidth * zone.width / 100);
+    }
+    
+    if (zone.bottom !== undefined) {
+      y = viewHeight - (viewHeight * (zone.bottom + zone.height) / 100) + 
+          random(0, viewHeight * zone.height / 100);
+    } else {
+      y = viewHeight * zone.top / 100 + random(0, viewHeight * zone.height / 100);
+    }
+    
+    return { x, y };
+  }
+
+  // Function to create and place a new batch of stickers
+  function createStickerBatch() {
+    // Clear existing stickers with fade out
+    const oldStickers = stickerContainer.querySelectorAll('.sticker');
+    oldStickers.forEach(sticker => {
+      sticker.classList.add('fade-out');
+      setTimeout(() => sticker.remove(), 500); // Remove after fade
+    });
+    
+    // Reset placed stickers tracking
+    placedStickers.length = 0;
+    
+    // Create new batch of random stickers
+    let stickerIndices = [];
+    while (stickerIndices.length < STICKERS_PER_BATCH) {
+      const idx = random(1, TOTAL_STICKERS);
+      if (!stickerIndices.includes(idx)) {
+        stickerIndices.push(idx);
+      }
+    }
+    
+    // Place each sticker in batch
+    stickerIndices.forEach(i => {
+      let placed = false;
+      let attempts = 0;
+      const size = random(60, 90); // Random size between 60-90px
+      
+      while (!placed && attempts < 50) {
+        const zone = safeZones[random(0, safeZones.length - 1)];
+        const pos = getRandomPosition(zone);
+        
+        if (!isOverlapping(pos.x, pos.y, size)) {
+          const img = document.createElement('img');
+          img.src = `stiker/st${i}.jpg`;
+          img.className = 'sticker';
+          img.alt = 'Stiker dekorasi';
+          
+          // Set size
+          img.style.width = size + 'px';
+          img.style.height = size + 'px';
+          
+          // Set position
+          img.style.left = pos.x + 'px';
+          img.style.top = pos.y + 'px';
+          
+          // Random animation with slight delay
+          img.style.animationDelay = (random(0, 20) / 10) + 's';
+          img.classList.add(animations[random(0, animations.length - 1)]);
+          
+          // Track position
+          placedStickers.push({
+            x: pos.x,
+            y: pos.y,
+            size: size
+          });
+          
+          // Add to container with fade in
+          stickerContainer.appendChild(img);
+          requestAnimationFrame(() => img.classList.add('fade-in'));
+          
+          placed = true;
+        }
+        attempts++;
+      }
+    });
+  }
+  
+  // Initial sticker batch
+  createStickerBatch();
+  
+  // Set up rotation interval
+  stickerRotationInterval = setInterval(createStickerBatch, 5000); // Rotate every 5 seconds
+}
+
+
+// Hide stickers
+function hideStickers() {
+  // Clear rotation interval if it exists
+  if (stickerRotationInterval) {
+    clearInterval(stickerRotationInterval);
+    stickerRotationInterval = null;
+  }
+  
+  // Fade out existing stickers
+  const stickers = stickerContainer.querySelectorAll('.sticker');
+  stickers.forEach(sticker => {
+    sticker.classList.add('fade-out');
+  });
+  
+  // Hide container and clear after fade
+  setTimeout(() => {
+    stickerContainer.style.display = 'none';
+    stickerContainer.innerHTML = '';
+  }, 500);
+}
 
 // Track current song and section
 let currentSong = bgMusic && bgMusic.getAttribute("src") ? decodeURIComponent(bgMusic.getAttribute("src")) : null;
@@ -15,6 +178,8 @@ function showBirthdayLove() {
   currentSection = "birthdayLove";
   modal.style.display = "none";
   modalBody.innerHTML = "";
+  // Hide stickers
+  hideStickers();
   // Return to default song
   playMusic("music/disarankan di bandung .mp3");
 }
@@ -105,6 +270,9 @@ function tampilMenu() {
     const closeBtn = modalContent.querySelector('.close');
     if (closeBtn) closeBtn.style.display = '';
   }
+
+  // Initialize stickers for memory selection page
+  initStickers();
   
   modalBody.innerHTML = `
     <h2 style="color:var(--accent);">Pilih Kenangan</h2>
@@ -212,6 +380,9 @@ function bukaAlbum(tipe) {
   // Set current section
   currentSection = tipe === 'kamu' ? 'photos' : 'us';
   
+  // Hide stickers when leaving memory selection
+  hideStickers();
+  
   // Tampilkan kembali tombol close yang mungkin tersembunyi
   const modalContent = document.querySelector('.modal-content');
   if (modalContent) {
@@ -226,12 +397,16 @@ function bukaAlbum(tipe) {
   } else {
     playMusic('music/abadi.mp3');
   }
-  const totalFoto = tipe === "kamu" ? 28 : 41;
-  const prefix = tipe === "kamu" ? "ft one/" : "ft two/2.";
-
-  const fotoList = [];
-  for (let i = 1; i <= totalFoto; i++) {
-    fotoList.push(`${prefix}${i}.jpeg`);
+  // Build a unified media list for 'kamu' (ft one): images 1..39, videos 40..51
+  const mediaList = [];
+  if (tipe === 'kamu') {
+    const prefix = 'ft one/';
+    for (let i = 1; i <= 39; i++) mediaList.push({ src: `${prefix}${i}.jpeg`, type: 'image' });
+    for (let i = 40; i <= 51; i++) mediaList.push({ src: `${prefix}${i}.mp4`, type: 'video' });
+  } else {
+    // Fallback for 'kita' - keep original behavior (images only)
+    const prefix = 'ft two/2.';
+    for (let i = 1; i <= 50; i++) mediaList.push({ src: `${prefix}${i}.jpeg`, type: 'image' });
   }
 
   let index = 0;
@@ -243,7 +418,7 @@ function bukaAlbum(tipe) {
         <div class="loader-overlay" id="loaderOverlay">
           <div class="loader"></div>
         </div>
-        <img id="gambar" class="fade show" src="${fotoList[index]}" alt="Foto">
+        <div id="mediaContainer"></div>
       </div>
       <div class="nav-buttons">
         <button class="nav-btn" id="prevBtn"> Back</button>
@@ -252,68 +427,114 @@ function bukaAlbum(tipe) {
     </div>
   `;
 
-  const gambar = document.getElementById("gambar");
-  const prevBtn = document.getElementById("prevBtn");
-  const nextBtn = document.getElementById("nextBtn");
-  const loaderOverlay = document.getElementById("loaderOverlay");
+  const mediaContainer = document.getElementById('mediaContainer');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const loaderOverlay = document.getElementById('loaderOverlay');
 
-  // preload semua foto
-  const cache = [];
-  fotoList.forEach((src) => {
-    const img = new Image();
-    img.src = src;
-    cache.push(img);
+  // Preload images (lightweight) and set video preload metadata
+  const imgCache = [];
+  mediaList.forEach((m, i) => {
+    if (m.type === 'image') {
+      const img = new Image(); img.src = m.src; imgCache[i] = img;
+    } else if (m.type === 'video') {
+      // create a short video element to preload metadata
+      const v = document.createElement('video');
+      v.preload = 'metadata';
+      v.src = m.src;
+    }
   });
 
   function updateTombol() {
     prevBtn.disabled = index === 0;
-    nextBtn.textContent = index === fotoList.length - 1 ? "Selesai ❤️" : "Next ";
+    nextBtn.textContent = index === mediaList.length - 1 ? 'Selesai ❤️' : 'Next ';
   }
 
-  function tampilFoto() {
-    loaderOverlay.classList.add("active");
-    gambar.classList.remove("show");
+  // Helper to clear current media and insert new one with transitions
+  let currentMediaEl = null;
+  function showMedia() {
+    const item = mediaList[index];
+    if (!item) return;
+
+    // If currently showing a video, pause it before switching
+    if (currentMediaEl && currentMediaEl.tagName === 'VIDEO') {
+      try { currentMediaEl.pause(); } catch (e) {}
+    }
+
+    // show loader and remove fade class
+    loaderOverlay.classList.add('active');
+    if (currentMediaEl) currentMediaEl.classList.remove('show');
 
     setTimeout(() => {
-      const newSrc = fotoList[index];
-      const imgTemp = cache[index] || new Image();
-      imgTemp.src = newSrc;
+      // remove old element
+      if (currentMediaEl && currentMediaEl.parentNode) currentMediaEl.parentNode.removeChild(currentMediaEl);
 
-      imgTemp.onload = () => {
-        gambar.src = newSrc;
-        gambar.onload = () => {
-          loaderOverlay.classList.remove("active");
-          requestAnimationFrame(() => gambar.classList.add("show"));
+      if (item.type === 'image') {
+        const img = document.createElement('img');
+        img.src = item.src;
+        img.alt = `Foto ${index + 1}`;
+        img.className = 'fade media-main-item';
+        img.onload = () => {
+          loaderOverlay.classList.remove('active');
+          mediaContainer.appendChild(img);
+          requestAnimationFrame(() => img.classList.add('show'));
         };
-      };
-    }, 250);
+        currentMediaEl = img;
+      } else {
+        const video = document.createElement('video');
+        video.src = item.src;
+        video.controls = true;
+        video.autoplay = true;
+        video.className = 'fade media-main-item';
+        video.onloadeddata = () => {
+          loaderOverlay.classList.remove('active');
+          mediaContainer.appendChild(video);
+          // attempt play; some browsers require user interaction
+          const p = video.play();
+          if (p && typeof p.then === 'function') p.catch(() => {});
+          requestAnimationFrame(() => video.classList.add('show'));
+        };
+        currentMediaEl = video;
+      }
+    }, 200);
 
     updateTombol();
   }
 
-  nextBtn.addEventListener("click", () => {
-    if (index < fotoList.length - 1) {
+  nextBtn.addEventListener('click', () => {
+    if (index < mediaList.length - 1) {
+      // If current is video, pause it first
+      if (currentMediaEl && currentMediaEl.tagName === 'VIDEO') {
+        try { currentMediaEl.pause(); } catch (e) {}
+      }
       index++;
-      tampilFoto();
+      showMedia();
     } else {
-      // selesai melihat album -> kembali ke menu dengan musik default
       showMemorySelection();
     }
   });
 
-  prevBtn.addEventListener("click", () => {
+  prevBtn.addEventListener('click', () => {
     if (index > 0) {
+      // If current is video, pause it first
+      if (currentMediaEl && currentMediaEl.tagName === 'VIDEO') {
+        try { currentMediaEl.pause(); } catch (e) {}
+      }
       index--;
-      tampilFoto();
+      showMedia();
     }
   });
 
-  updateTombol();
+  // show initial media
+  showMedia();
 }
 
 // ================= VIDEO ==================
 function tampilVideo() {
   currentSection = "video";
+  
+  // Hide stickers when leaving memory selection
+  hideStickers();
   
   // Tampilkan kembali tombol close yang mungkin tersembunyi
   const modalContent = document.querySelector('.modal-content');
@@ -322,7 +543,8 @@ function tampilVideo() {
     if (closeBtn) closeBtn.style.display = '';
   }
   
-  const videos = ["vt/vt 1.mp4", "vt/vt 2.mp4"];
+  // Generate video list automatically (vt 1.mp4 sampai vt 17.mp4)
+  const videos = Array.from({ length: 17 }, (_, i) => `vt/vt ${i + 1}.mp4`);
   let index = 0;
 
   // saat membuka halaman video, ganti lagu ke lagu video
@@ -356,35 +578,67 @@ function tampilVideo() {
   }
 
   function gantiVideo() {
+    // Show loader immediately
     loaderOverlay.classList.add("active");
     videoPlayer.classList.remove("show");
 
+    // Pause current video first
+    try {
+      videoPlayer.pause();
+    } catch (e) {}
+
+    // Switch video with transition
     setTimeout(() => {
       const newSrc = videos[index];
       videoPlayer.src = newSrc;
 
+      // Handle video loading and play
       videoPlayer.onloadeddata = () => {
         loaderOverlay.classList.remove("active");
-        videoPlayer.play();
+        const playPromise = videoPlayer.play();
+        if (playPromise) {
+          playPromise.catch(error => {
+            console.log('Auto-play prevented:', error);
+          });
+        }
         requestAnimationFrame(() => videoPlayer.classList.add("show"));
       };
-    }, 250);
+
+      // Handle loading error
+      videoPlayer.onerror = () => {
+        console.log('Error loading video:', videoPlayer.error);
+        loaderOverlay.classList.remove("active");
+      };
+    }, 250); // Short delay for smooth transition
 
     updateTombolVideo();
   }
 
   nextBtn.addEventListener("click", () => {
     if (index < videos.length - 1) {
+      // Pause current video before switching
+      try {
+        videoPlayer.pause();
+      } catch (e) {}
+      
       index++;
       gantiVideo();
     } else {
-      // selesai menonton video -> kembali ke menu dengan musik default
+      // On last video, return to memory selection
+      try {
+        videoPlayer.pause();
+      } catch (e) {}
       showMemorySelection();
     }
   });
 
   prevBtn.addEventListener("click", () => {
     if (index > 0) {
+      // Pause current video before switching
+      try {
+        videoPlayer.pause();
+      } catch (e) {}
+      
       index--;
       gantiVideo();
     }
