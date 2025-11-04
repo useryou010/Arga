@@ -246,8 +246,8 @@ function bukaAlbum(tipe) {
         <img id="gambar" class="fade show" src="${fotoList[index]}" alt="Foto">
       </div>
       <div class="nav-buttons">
-        <button class="nav-btn" id="prevBtn">← Back</button>
-        <button class="nav-btn" id="nextBtn">Next →</button>
+        <button class="nav-btn" id="prevBtn"> Back</button>
+        <button class="nav-btn" id="nextBtn">Next </button>
       </div>
     </div>
   `;
@@ -267,7 +267,7 @@ function bukaAlbum(tipe) {
 
   function updateTombol() {
     prevBtn.disabled = index === 0;
-    nextBtn.textContent = index === fotoList.length - 1 ? "Selesai ❤️" : "Next →";
+    nextBtn.textContent = index === fotoList.length - 1 ? "Selesai ❤️" : "Next ";
   }
 
   function tampilFoto() {
@@ -339,8 +339,8 @@ function tampilVideo() {
         <video id="videoPlayer" class="fade show" src="${videos[index]}" controls autoplay></video>
       </div>
       <div class="nav-buttons">
-        <button class="nav-btn" id="prevBtn">← Back</button>
-        <button class="nav-btn" id="nextBtn">Next →</button>
+        <button class="nav-btn" id="prevBtn">Back</button>
+        <button class="nav-btn" id="nextBtn">Next</button>
       </div>
     </div>
   `;
@@ -352,7 +352,7 @@ function tampilVideo() {
 
   function updateTombolVideo() {
     prevBtn.disabled = index === 0;
-    nextBtn.textContent = index === videos.length - 1 ? "Selesai ❤️" : "Next →";
+    nextBtn.textContent = index === videos.length - 1 ? "Selesai ❤️" : "Next ";
   }
 
   function gantiVideo() {
