@@ -65,17 +65,25 @@ function hideStickers() {
       sideContainer.remove();
     }, 600); // Slightly longer to ensure smooth fade out
   }
+  // remove any resize handler used for responsive sticker layout
+  if (window._stickerResizeHandler) {
+    try { window.removeEventListener('resize', window._stickerResizeHandler); } catch (e) {}
+    window._stickerResizeHandler = null;
   }
+  if (window._stickerResizeTimer) { clearTimeout(window._stickerResizeTimer); window._stickerResizeTimer = null; }
+
   if (window.stickerBatchInterval) {
     clearInterval(window.stickerBatchInterval);
     window.stickerBatchInterval = null;
   }
-  
+
   // Clear side sticker interval if it exists
   if (window.sideStickerInterval) {
     clearInterval(window.sideStickerInterval);
     window.sideStickerInterval = null;
   }
+
+}
 
 // Ensure container exists on load so CSS can style it
 ensureStickerContainer();
@@ -130,9 +138,18 @@ function renderStickers(section) {
 
   // Container setup is done, rest of the function continues...
 
-  const minSize = 60, maxSize = 90;
-  const mainStickerCount = 10; // 5 top + 5 bottom
-  const minSpacing = 100; // minimal distance between centers
+  // Responsive sizing and spacing based on viewport
+  const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+  const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+  const isMobile = vw <= 480;
+  const isTablet = vw > 480 && vw <= 900;
+
+  const minSize = isMobile ? 44 : isTablet ? 52 : 60;
+  const maxSize = isMobile ? 64 : isTablet ? 76 : 90;
+  // Reduce sticker count based on section
+  const mainStickerCount = section === 'birthdayLove' ? 4 : 6; // 2 top + 2 bottom for birthday, 3+3 for memory
+  // Minimal center distance scales down on smaller screens
+  const minSpacing = isMobile ? 56 : isTablet ? 80 : 100;
 
   function getForbiddenRect() {
     const modalEl = document.getElementById('modal');
@@ -194,25 +211,48 @@ function renderStickers(section) {
     // Get next batch of unique stickers
     const stickerIndices = usedStickers.getNext(mainStickerCount);
     
-    for (let k = 0; k < mainStickerCount; k++) {
-      const idx = stickerIndices[k];
-      const zone = k < mainStickerCount / 2 ? 'top' : 'bottom';
-      const size = randomInt(minSize, maxSize);
+  for (let k = 0; k < mainStickerCount; k++) {
+  const idx = stickerIndices[k];
+  const zone = k < mainStickerCount / 2 ? 'top' : 'bottom';
+  const size = randomInt(minSize, maxSize);
+      
+      // For birthday love page with 4 stickers, ensure better horizontal distribution
+      const isLeft = k === 0 || k === 2; // First of each pair goes left
+      const horizontalBias = section === 'birthdayLove' ? 
+        (isLeft ? '25%' : '75%') : // Force left/right distribution for birthday
+        null; // Keep random for memory selection
       let tries = 0;
       let pos = null;
 
       while (tries < 200) {
-        const x = randomInt(8, Math.max(8, window.innerWidth - size - 8));
+        let x;
+        // On narrow screens distribute evenly across width to avoid collisions
+        const nPerZone = Math.max(1, Math.floor(mainStickerCount / 2));
+        const posIndex = k < nPerZone ? k : k - nPerZone;
+        if (isMobile) {
+          // Even columns with small jitter
+          const colWidth = Math.max(1, Math.floor(vw / nPerZone));
+          x = Math.floor((posIndex + 0.5) * colWidth) - Math.floor(size / 2) + randomInt(-12, 12);
+          x = Math.max(6, Math.min(vw - size - 6, x));
+        } else if (horizontalBias) {
+          const baseX = Math.floor(vw * (horizontalBias === '25%' ? 0.25 : 0.75));
+          x = baseX - (size / 2) + randomInt(-50, 50);
+          x = Math.max(8, Math.min(vw - size - 8, x));
+        } else {
+          x = randomInt(8, Math.max(8, vw - size - 8));
+        }
+
         let y;
         const forbidden = getForbiddenRect();
         if (zone === 'top') {
-          // top area: from 8 to either forbidden.top - size - 8 or middle
-          const topLimit = forbidden && (forbidden.top > 8) ? Math.max(8, Math.floor(forbidden.top - size - 8)) : Math.max(8, Math.floor(window.innerHeight / 2) - size - 8);
+          // top area: use relative ranges on small screens to keep stickers away from modal
+          const extraForbidden = (section === 'birthdayLove' && isMobile) ? 48 : 8;
+          const topLimit = forbidden && (forbidden.top > 8) ? Math.max(8, Math.floor(forbidden.top - size - extraForbidden)) : Math.max(8, Math.floor(vh * 0.36) - size - extraForbidden);
           if (topLimit < 8) { y = 8; } else { y = randomInt(8, topLimit); }
         } else {
-          // bottom area: from either forbidden.bottom + 8 or middle to window bottom
-          const bottomStart = forbidden && (forbidden.bottom < window.innerHeight) ? Math.min(window.innerHeight - size - 8, Math.floor(forbidden.bottom + 8)) : Math.floor(window.innerHeight / 2) + 8;
-          const bottomMax = Math.max(bottomStart, window.innerHeight - size - 8);
+          const extraForbidden = (section === 'birthdayLove' && isMobile) ? 48 : 8;
+          const bottomStart = forbidden && (forbidden.bottom < vh) ? Math.min(vh - size - extraForbidden, Math.floor(forbidden.bottom + extraForbidden)) : Math.floor(vh * 0.64) + extraForbidden;
+          const bottomMax = Math.max(bottomStart, vh - size - extraForbidden);
           if (bottomStart > bottomMax) { y = bottomMax; } else { y = randomInt(bottomStart, bottomMax); }
         }
 
@@ -242,6 +282,20 @@ function renderStickers(section) {
   // initial draw & periodic redraw
   drawBatch();
   window.stickerBatchInterval = setInterval(drawBatch, 5000);
+  // Add resize handler to redraw with debounce so stickers reflow on orientation/size changes
+  if (window._stickerResizeHandler) {
+    window.removeEventListener('resize', window._stickerResizeHandler);
+    window._stickerResizeHandler = null;
+  }
+  window._stickerResizeHandler = function () {
+    if (window._stickerResizeTimer) clearTimeout(window._stickerResizeTimer);
+    window._stickerResizeTimer = setTimeout(() => {
+      try { drawBatch(); } catch (e) {}
+      // adjust side stickers too (they hide on narrow screens)
+      if (section === 'birthdayLove') showSideStickers();
+    }, 160);
+  };
+  window.addEventListener('resize', window._stickerResizeHandler);
 }
 
   // Helper function to show fixed side stickers on birthday screen
@@ -256,6 +310,17 @@ function renderStickers(section) {
       }
       return null;
     }
+      // Responsiveness: hide side stickers on very narrow screens (mobile)
+      const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+      if (vw <= 480) {
+        const existing = document.getElementById('sideStickerContainer');
+        if (existing) existing.remove();
+        if (window.sideStickerInterval) {
+          clearInterval(window.sideStickerInterval);
+          window.sideStickerInterval = null;
+        }
+        return null;
+      }
     // Create a dedicated container for side stickers if it doesn't exist
     let sideContainer = document.getElementById("sideStickerContainer");
     if (!sideContainer) {
@@ -278,10 +343,13 @@ function renderStickers(section) {
     if (rightSticker) rightSticker.remove();
 
     // Base styles untuk kedua stiker
+    // Adjust side sticker size by viewport
+    const isTablet = vw > 480 && vw <= 900;
+    const sideSize = isTablet ? 68 : 85;
     const baseStyles = {
       position: "fixed",
-      width: "85px",
-      height: "85px",
+      width: `${sideSize}px`,
+      height: `${sideSize}px`,
       top: "45%", // Align with text vertically
       transform: "translateY(-50%)", // Center the stickers precisely
       opacity: "0",
@@ -338,6 +406,14 @@ function renderStickers(section) {
 
   // Helper to show stickers only on allowed sections (birthdayLove, memorySelection)
   function showStickers(section) {
+    // No stickers at all for letter page
+    if (section === 'letter') {
+      hideStickers();
+      const sideContainer = document.getElementById("sideStickerContainer");
+      if (sideContainer) sideContainer.remove();
+      return;
+    }
+    
     if (section === 'birthdayLove') {
       renderStickers(section);
       // Add and update side stickers only on birthday screen
@@ -390,6 +466,16 @@ function showBirthdayLove() {
 function showDearMyEndlessLove() {
   currentSection = "letter";
   modal.style.display = "flex";
+  
+  // Ensure all stickers are hidden before showing letter
+  hideStickers();
+  const sideContainer = document.getElementById("sideStickerContainer");
+  if (sideContainer) sideContainer.remove();
+  if (window.sideStickerInterval) {
+    clearInterval(window.sideStickerInterval);
+    window.sideStickerInterval = null;
+  }
+  
   tampilSurat();
   
   // Set direct-to-home close handler specifically for letter page
@@ -507,8 +593,18 @@ function tampilMenu() {
 
 // ---------------- SURAT (halaman pembuka) ----------------
 function tampilSurat() {
-  // Hide stickers when showing letter
+  // Ensure NO stickers are visible on letter page
   hideStickers();
+  const sideContainer = document.getElementById("sideStickerContainer");
+  if (sideContainer) sideContainer.remove();
+  if (window.sideStickerInterval) {
+    clearInterval(window.sideStickerInterval);
+    window.sideStickerInterval = null;
+  }
+  if (window.stickerBatchInterval) {
+    clearInterval(window.stickerBatchInterval);
+    window.stickerBatchInterval = null;
+  }
   
   // Tambahkan class surat ke modal-content untuk scrolling
   const modalContent = document.querySelector('.modal-content');
@@ -520,7 +616,41 @@ function tampilSurat() {
   }
 
   modalBody.innerHTML = 
-  '<style> .surat-content { width: 100%; text-align: left; padding: 0 18px; box-sizing: border-box; } .envelope { width: 100%; display:flex; justify-content:center; align-items:center; } .letter { width: 92%; max-width: 520px; background: linear-gradient(180deg,#111 0%, #0b0b0b 100%); border-radius: 12px; border: 2px solid rgba(var(--accent-rgba), 0.12); padding: 28px 24px; box-shadow: 0 0 20px rgba(var(--accent-rgba), 0.06); } .letter h3 { color: var(--accent); margin: 0 0 25px 0; text-align: center; font-size: 1.4em; text-shadow: 0 0 10px rgba(var(--accent-rgba), 0.28); } .letter p { color: #fff; line-height: 1.7; margin: 0 0 15px 0; text-align: left; font-size: 1em; word-spacing: normal; } .letter p:last-of-type { margin-bottom: 20px; } .surat-anim { animation: floatIn 0.6s ease both; } @keyframes floatIn { from { transform: translateY(18px); opacity:0 } to { transform: translateY(0); opacity:1 } } .lanjut-btn { margin: 10px 0; } </style> <div class="surat-content"> <div class="envelope"> <div class="letter surat-anim"> <h3>dear my endless love... 💝</h3> <p>so sorry for my fault, n u know im not perfect actually kinda i hate myself, a lott a time. and I chose u because u determine the color in my life.</p> <p>mungkin aku tidak sesempurna itu dan aku tidak bisa selalu membahagiakan semua orang, perlu kamu ketahui aku akan mengusahakan apapun untukmu.</p> <p>selamat ulang tahun kiya! I hope ur find a much better place to grow, and may good things come ur way in the coming year. I will always love u.</p> <p>aku berharap di kehidupan lain kita selalu bersama, dan kita berbahagia di versi kiya yang tidak mengenal arga dan arga yang tidak mengenal kiya.</p> <p>penuh runtutan memori, hal hal fana didunia ini. yang artinya memang hidup ialah sekumpulan masalah yang diselingi oleh kebahagiaan, namun hidupku adalah sekumpulan masalah yang diselingi oleh dirimu.</p> <p>berbahagialah kiya! jika kita tidak bersama setidaknya aku pernah mengukir kisah di hidupmu, dan semoga semua hal bahagia yang kita lalui selalu ada dalam benakmu.</p> <p>jikalau nanti aku pinjam nama depan atau tengahmu boleh ya? aku berharap anakku dapat memberi semua orang kebahagiaan sama seperti dirimu. dan aku mengingat kembali dimana hidupku yang berwarna diciptakan semasa sma bersamamu, i always loving u my endless love.</p> <p>selamat berkelana nona manis, maaf jika memang tuntutanku membuatmu pergi, namun aku tidak ingin sesak dengan rasa sakit. dan mungkin benar menurutmu, inilah jalan yang kamu pilih dan aku tidak harus selalu membiru pada keadaan ini, akupun harus menentukan jalan hidupku. yang dimana setiap langkah, setiap usaha, setiap doa, dan setiap runtayan yang ada di hidupku dihiasi olehmu, aku selalu berharap kita bisa bersama. namun memang tidak bisa mungkin di kehidupan kedua aku menjadi arga yang lebih baik, semoga aku tidak keras kepala ya di kehidupan kedua.</p> <p>aku tidak akan kemana mana, aku selalu mencarimu entah itu di setiap pencapaianku, bahkan di sela retak hidupku aku akan mencarimu. maaf atas segala kesalahan dan segala tuntutan yang aku perbuat, semoga kamu bertemu hal yang lebih baik, dan aku akan tetap disini sebagai aga yang selalu kamu cintai.</p> <p>biarkan semua kisah ini kekal bersama rasa yang belum sirna.</p> <p>dan untungnya aku bertemu denganmu di sela sempit hidup ini, beribu maaf kusampaikan pada pesan ini dan berjuta cinta dan rasa yang aku cantumkan pada surat ini menjadi penanda bertumbuhnya seorang bidadari.</p> <p>aku ingin mengatakan pada hawa bahwa aku rindu pada seorang kaum nya yang diciptakan sesempurna mungkin oleh sang pencipta, dan diturunkan kebumi melalui rahim ibunya yang kuat beserta cinta ayahnya yang abadi.</p> <p>selamat ulang tahun kiya, i always loving u.</p> <div style="text-align:center;"> <button class="btn lanjut-btn" id="lanjutBtn">Lanjut ➜</button> </div> </div> </div> </div>';
+    `<style>
+    .surat-content { width: 100%; text-align: left; padding: 0 18px; box-sizing: border-box; }
+    .envelope { width: 100%; display:flex; justify-content:center; align-items:center; }
+    .letter { width: 92%; max-width: 520px; background: linear-gradient(180deg,#111 0%, #0b0b0b 100%); border-radius: 12px; border: 2px solid rgba(var(--accent-rgba), 0.12); padding: 28px 24px; box-shadow: 0 0 20px rgba(var(--accent-rgba), 0.06); }
+    /* Title: force single-line on small screens and scale responsively */
+    .letter h3 { color: var(--accent); margin: 0 0 18px 0; text-align: center; font-size: clamp(1.1rem, 4.5vw, 1.6rem); text-shadow: 0 0 10px rgba(var(--accent-rgba), 0.28); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    /* Paragraphs: scale down on small screens so body text fits nicely */
+    .letter p { color: #fff; line-height: 1.7; margin: 0 0 14px 0; text-align: left; font-size: clamp(0.95rem, 3.6vw, 1.02rem); word-spacing: normal; }
+    .letter p:last-of-type { margin-bottom: 20px; }
+    .surat-anim { animation: floatIn 0.6s ease both; }
+    @keyframes floatIn { from { transform: translateY(18px); opacity:0 } to { transform: translateY(0); opacity:1 } }
+    .lanjut-btn { margin: 10px 0; }
+    /* Extra tweak for very narrow phones: reduce letter padding and allow title to shrink slightly */
+    @media (max-width: 420px) {
+      .letter { padding: 20px 16px; }
+      .letter h3 { font-size: clamp(1rem, 5.6vw, 1.4rem); }
+      .letter p { font-size: clamp(0.9rem, 4.2vw, 1rem); }
+    }
+  </style>
+  <div class="surat-content"> <div class="envelope"> <div class="letter surat-anim"> <h3>dear my endless love... 💝</h3>
+    <p>so sorry for my fault, n u know im not perfect actually kinda i hate myself, a lott a time. and I chose u because u determine the color in my life.</p>
+    <p>mungkin aku tidak sesempurna itu dan aku tidak bisa selalu membahagiakan semua orang, perlu kamu ketahui aku akan mengusahakan apapun untukmu.</p>
+    <p>selamat ulang tahun kiya! I hope ur find a much better place to grow, and may good things come ur way in the coming year. I will always love u.</p>
+    <p>aku berharap di kehidupan lain kita selalu bersama, dan kita berbahagia di versi kiya yang tidak mengenal arga dan arga yang tidak mengenal kiya.</p>
+    <p>penuh runtutan memori, hal hal fana didunia ini. yang artinya memang hidup ialah sekumpulan masalah yang diselingi oleh kebahagiaan, namun hidupku adalah sekumpulan masalah yang diselingi oleh dirimu.</p>
+    <p>berbahagialah kiya! jika kita tidak bersama setidaknya aku pernah mengukir kisah di hidupmu, dan semoga semua hal bahagia yang kita lalui selalu ada dalam benakmu.</p>
+    <p>jikalau nanti aku pinjam nama depan atau tengahmu boleh ya? aku berharap anakku dapat memberi semua orang kebahagiaan sama seperti dirimu. dan aku mengingat kembali dimana hidupku yang berwarna diciptakan semasa sma bersamamu, i always loving u my endless love.</p>
+    <p>selamat berkelana nona manis, maaf jika memang tuntutanku membuatmu pergi, namun aku tidak ingin sesak dengan rasa sakit. dan mungkin benar menurutmu, inilah jalan yang kamu pilih dan aku tidak harus selalu membiru pada keadaan ini, akupun harus menentukan jalan hidupku. yang dimana setiap langkah, setiap usaha, setiap doa, dan setiap runtayan yang ada di hidupku dihiasi olehmu, aku selalu berharap kita bisa bersama. namun memang tidak bisa mungkin di kehidupan kedua aku menjadi arga yang lebih baik, semoga aku tidak keras kepala ya di kehidupan kedua.</p>
+    <p>aku tidak akan kemana mana, aku selalu mencarimu entah itu di setiap pencapaianku, bahkan di sela retak hidupku aku akan mencarimu. maaf atas segala kesalahan dan segala tuntutan yang aku perbuat, semoga kamu bertemu hal yang lebih baik, dan aku akan tetap disini sebagai aga yang selalu kamu cintai.</p>
+    <p>biarkan semua kisah ini kekal bersama rasa yang belum sirna.</p>
+    <p>dan untungnya aku bertemu denganmu di sela sempit hidup ini, beribu maaf kusampaikan pada pesan ini dan berjuta cinta dan rasa yang aku cantumkan pada surat ini menjadi penanda bertumbuhnya seorang bidadari.</p>
+    <p>aku ingin mengatakan pada hawa bahwa aku rindu pada seorang kaum nya yang diciptakan sesempurna mungkin oleh sang pencipta, dan diturunkan kebumi melalui rahim ibunya yang kuat beserta cinta ayahnya yang abadi.</p>
+    <p>selamat ulang tahun kiya, i always loving u.</p>
+    <div style="text-align:center;"> <button class="btn lanjut-btn" id="lanjutBtn">Lanjut ➜</button> </div>
+  </div> </div> </div>`;
 
   const lanjutBtn = document.getElementById("lanjutBtn");
   if (lanjutBtn) {
