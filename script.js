@@ -124,6 +124,18 @@ function renderStickers(section) {
   const stickerContainer = ensureStickerContainer();
   if (!stickerContainer) return;
 
+  // Debug/robustness: when opening memorySelection ensure sticker pool is fresh
+  // This avoids accidentally running out of available indices after many opens
+  if (section === 'memorySelection') {
+    try { usedStickers.reset(); } catch (e) {}
+  }
+
+  // Log helpful info so we can verify on desktop vs mobile (check browser console)
+  try {
+    const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+    console.log('[renderStickers] section=', section, 'vw=', vw);
+  } catch (e) {}
+
   // clear previous interval
   if (window.stickerBatchInterval) {
     clearInterval(window.stickerBatchInterval);
