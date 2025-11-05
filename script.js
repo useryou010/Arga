@@ -27,35 +27,361 @@ function ensureStickerContainer() {
       pointerEvents: "none",
       overflow: "hidden",
       zIndex: "5", // will sit below modal which we ensure to have higher z-index
-      display: "none"
+      display: "none",
+      transition: "opacity 0.4s ease"
     });
+    // Add custom style for fade-out animation
+    const style = document.createElement('style');
+    style.textContent = '.fade-out { opacity: 0 !important; }';
+    document.head.appendChild(style);
   }
   return container;
 }
 
 // Hide stickers (called whenever leaving memory selection)
 function hideStickers() {
+  // Handle main sticker container
   const container = document.getElementById("stickerContainer");
   if (container) {
-    container.style.display = "none";
-    container.innerHTML = "";
+    container.classList.add('fade-out');
+    setTimeout(() => {
+      container.style.display = "none";
+      container.innerHTML = "";
+      container.classList.remove('fade-out');
+    }, 400);
+  }
+
+  // Handle side sticker container separately
+  const sideContainer = document.getElementById("sideStickerContainer");
+  if (sideContainer) {
+    // Fade out the side stickers
+    const leftSticker = document.getElementById("sideStickerLeft");
+    const rightSticker = document.getElementById("sideStickerRight");
+    if (leftSticker) leftSticker.style.opacity = "0";
+    if (rightSticker) rightSticker.style.opacity = "0";
+    
+    // Remove after fade out
+    setTimeout(() => {
+      sideContainer.remove();
+    }, 600); // Slightly longer to ensure smooth fade out
+  }
   }
   if (window.stickerBatchInterval) {
     clearInterval(window.stickerBatchInterval);
     window.stickerBatchInterval = null;
   }
-}
+  
+  // Clear side sticker interval if it exists
+  if (window.sideStickerInterval) {
+    clearInterval(window.sideStickerInterval);
+    window.sideStickerInterval = null;
+  }
 
 // Ensure container exists on load so CSS can style it
 ensureStickerContainer();
+
+// Track sticker usage globally
+const usedStickers = {
+  available: [], // Available sticker indices
+  exclude: [], // No excluded stickers - all can be used
+  reset() {
+    this.available = Array.from(
+      { length: 21 }, 
+      (_, i) => i + 1
+    ).filter(i => !this.exclude.includes(i));
+    this.shuffle(this.available);
+  },
+  shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+  },
+  getNext(count) {
+    if (this.available.length < count) {
+      this.reset();
+    }
+    return this.available.splice(0, count);
+  }
+};
+
+// Initialize sticker pool
+if (!window.stickerPool) {
+  usedStickers.reset();
+}
+
+// Reusable sticker renderer. Call with 'birthdayLove' or 'memorySelection'
+function renderStickers(section) {
+  const stickerContainer = ensureStickerContainer();
+  if (!stickerContainer) return;
+
+  // clear previous interval
+  if (window.stickerBatchInterval) {
+    clearInterval(window.stickerBatchInterval);
+    window.stickerBatchInterval = null;
+  }
+
+  stickerContainer.innerHTML = '';
+  stickerContainer.style.display = 'block';
+  stickerContainer.style.pointerEvents = 'none';
+  // container should be above background but below modal
+  stickerContainer.style.zIndex = '2000';
+
+  // Container setup is done, rest of the function continues...
+
+  const minSize = 60, maxSize = 90;
+  const mainStickerCount = 10; // 5 top + 5 bottom
+  const minSpacing = 100; // minimal distance between centers
+
+  function getForbiddenRect() {
+    const modalEl = document.getElementById('modal');
+    const modalContent = document.querySelector('.modal-content');
+    // If modal is visible (display not 'none'), avoid modal-content area
+    try {
+      if (modalEl && window.getComputedStyle(modalEl).display !== 'none' && modalContent) {
+        return modalContent.getBoundingClientRect();
+      }
+    } catch (e) {}
+    // Otherwise avoid the main centered container on the page (birthday screen)
+    const mainContainer = document.querySelector('.container');
+    if (mainContainer) return mainContainer.getBoundingClientRect();
+    return null;
+  }
+
+  function overlapsForbidden(x, y, size, forbidden) {
+    if (!forbidden) return false;
+    return x + size > forbidden.left && x < forbidden.right && y + size > forbidden.top && y < forbidden.bottom;
+  }
+
+  function tooClose(x, y, size, placed, minDist) {
+    for (const p of placed) {
+      const dx = x + size / 2 - (p.x + p.size / 2);
+      const dy = y + size / 2 - (p.y + p.size / 2);
+      const dist = Math.hypot(dx, dy);
+      if (dist < minDist) return true;
+    }
+    return false;
+  }
+
+  function makeStickerElement(idx, x, y, size) {
+    const el = document.createElement('img');
+    el.className = 'sticker fade-in';
+    el.style.position = 'absolute';
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    el.style.width = size + 'px';
+    el.style.height = size + 'px';
+    el.dataset.animation = String(randomInt(1, 5));
+    // Use specific file names st1.jpg .. st21.jpg
+    el.src = `stiker/st${idx}.jpg`;
+    // Ensure visible & clear
+    el.style.opacity = '1';
+    el.style.filter = 'none';
+    // Stickers should sit above background but under modal
+    el.style.zIndex = '2001';
+    el.style.transform = `rotate(${randomInt(-12, 12)}deg)`;
+    const anims = ['float', 'swing', 'bounce', 'drift'];
+    el.classList.add(anims[randomInt(0, anims.length - 1)]);
+    return el;
+  }
+
+  function drawBatch() {
+    stickerContainer.innerHTML = '';
+    const forbidden = getForbiddenRect();
+    const placed = [];
+
+    // Get next batch of unique stickers
+    const stickerIndices = usedStickers.getNext(mainStickerCount);
+    
+    for (let k = 0; k < mainStickerCount; k++) {
+      const idx = stickerIndices[k];
+      const zone = k < mainStickerCount / 2 ? 'top' : 'bottom';
+      const size = randomInt(minSize, maxSize);
+      let tries = 0;
+      let pos = null;
+
+      while (tries < 200) {
+        const x = randomInt(8, Math.max(8, window.innerWidth - size - 8));
+        let y;
+        const forbidden = getForbiddenRect();
+        if (zone === 'top') {
+          // top area: from 8 to either forbidden.top - size - 8 or middle
+          const topLimit = forbidden && (forbidden.top > 8) ? Math.max(8, Math.floor(forbidden.top - size - 8)) : Math.max(8, Math.floor(window.innerHeight / 2) - size - 8);
+          if (topLimit < 8) { y = 8; } else { y = randomInt(8, topLimit); }
+        } else {
+          // bottom area: from either forbidden.bottom + 8 or middle to window bottom
+          const bottomStart = forbidden && (forbidden.bottom < window.innerHeight) ? Math.min(window.innerHeight - size - 8, Math.floor(forbidden.bottom + 8)) : Math.floor(window.innerHeight / 2) + 8;
+          const bottomMax = Math.max(bottomStart, window.innerHeight - size - 8);
+          if (bottomStart > bottomMax) { y = bottomMax; } else { y = randomInt(bottomStart, bottomMax); }
+        }
+
+        if (!overlapsForbidden(x, y, size, forbidden) && !tooClose(x, y, size, placed, minSpacing)) {
+          pos = { x, y, size };
+          break;
+        }
+        tries++;
+      }
+
+      if (!pos) {
+        // fallback placement if too crowded
+        pos = { x: 8 + (k * 12) % (window.innerWidth - maxSize - 16), y: 8 + (k * 18) % (window.innerHeight - maxSize - 16), size };
+        // ensure it's not overlapping forbidden: nudge if needed
+        if (overlapsForbidden(pos.x, pos.y, pos.size, forbidden)) {
+          pos.y = forbidden.bottom + 12;
+          if (pos.y + pos.size > window.innerHeight) pos.y = window.innerHeight - pos.size - 8;
+        }
+      }
+
+      placed.push(pos);
+      const el = makeStickerElement(idx, pos.x, pos.y, pos.size);
+      stickerContainer.appendChild(el);
+    }
+  }
+
+  // initial draw & periodic redraw
+  drawBatch();
+  window.stickerBatchInterval = setInterval(drawBatch, 5000);
+}
+
+  // Helper function to show fixed side stickers on birthday screen
+  function showSideStickers() {
+    // Only show side stickers when we're on the birthday screen
+    if (typeof currentSection !== 'undefined' && currentSection !== 'birthdayLove') {
+      const existing = document.getElementById('sideStickerContainer');
+      if (existing) existing.remove();
+      if (window.sideStickerInterval) {
+        clearInterval(window.sideStickerInterval);
+        window.sideStickerInterval = null;
+      }
+      return null;
+    }
+    // Create a dedicated container for side stickers if it doesn't exist
+    let sideContainer = document.getElementById("sideStickerContainer");
+    if (!sideContainer) {
+      sideContainer = document.createElement("div");
+      sideContainer.id = "sideStickerContainer";
+      Object.assign(sideContainer.style, {
+        position: "fixed",
+        inset: "0",
+        pointerEvents: "none",
+        overflow: "visible",
+        zIndex: "2001"
+      });
+      document.body.appendChild(sideContainer);
+    }
+    
+    // Clear any existing side stickers
+    const leftSticker = document.getElementById("sideStickerLeft");
+    const rightSticker = document.getElementById("sideStickerRight");
+    if (leftSticker) leftSticker.remove();
+    if (rightSticker) rightSticker.remove();
+
+    // Base styles untuk kedua stiker
+    const baseStyles = {
+      position: "fixed",
+      width: "85px",
+      height: "85px",
+      top: "45%", // Align with text vertically
+      transform: "translateY(-50%)", // Center the stickers precisely
+      opacity: "0",
+      transition: "opacity 0.6s ease-out, transform 0.3s ease-out",
+      pointerEvents: "none",
+      willChange: "transform"
+    };
+
+    // Initialize side sticker pool if not exists
+    if (!window.sideStickerPool) {
+      window.sideStickerPool = Array.from({ length: 21 }, (_, i) => i + 1);
+    }
+    
+    // Get random indices for side stickers
+    const randomIndex1 = Math.floor(Math.random() * window.sideStickerPool.length);
+    const randomIndex2 = Math.floor(Math.random() * window.sideStickerPool.length);
+    
+    // Create and position fixed side stickers
+    const left = document.createElement("img");
+    left.src = `stiker/st${window.sideStickerPool[randomIndex1]}.jpg`; // Dynamic left sticker
+    left.id = "sideStickerLeft";
+    left.className = "sticker side-sticker float";
+    Object.assign(left.style, {
+      ...baseStyles,
+      left: "10%",
+      transform: "translateY(-50%) scale(0.9) rotate(-5deg)"
+    });
+
+    const right = document.createElement("img");
+    right.src = `stiker/st${window.sideStickerPool[randomIndex2]}.jpg`; // Dynamic right sticker
+    right.id = "sideStickerRight";
+    right.className = "sticker side-sticker drift";
+    Object.assign(right.style, {
+      ...baseStyles,
+      right: "10%",
+      transform: "translateY(-50%) scale(0.9) rotate(5deg)"
+    });
+
+    // Add to dedicated container
+    sideContainer.appendChild(left);
+    sideContainer.appendChild(right);
+
+    // Trigger fade in animation with slight delay
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        left.style.opacity = "1";
+        right.style.opacity = "1";
+      }, 100);
+    });
+
+    // Return the container for cleanup
+    return sideContainer;
+  }
+
+  // Helper to show stickers only on allowed sections (birthdayLove, memorySelection)
+  function showStickers(section) {
+    if (section === 'birthdayLove') {
+      renderStickers(section);
+      // Add and update side stickers only on birthday screen
+      // clear any existing interval first to avoid duplicates
+      if (window.sideStickerInterval) {
+        clearInterval(window.sideStickerInterval);
+        window.sideStickerInterval = null;
+      }
+      showSideStickers();
+      // Update side stickers periodically only on birthday screen
+      window.sideStickerInterval = setInterval(() => {
+        // guard inside showSideStickers prevents running when section changed
+        showSideStickers();
+      }, 5000);
+    } else if (section === 'memorySelection') {
+      // For memory selection, ONLY show random stickers
+      renderStickers(section);
+      // Ensure side stickers are hidden
+      const sideContainer = document.getElementById("sideStickerContainer");
+      if (sideContainer) {
+        sideContainer.remove();
+      }
+      if (window.sideStickerInterval) {
+        clearInterval(window.sideStickerInterval);
+        window.sideStickerInterval = null;
+      }
+    } else {
+      hideStickers();
+    }
+  }
+
+  // If we start on the birthday screen, show stickers immediately
+  if (typeof currentSection !== 'undefined' && currentSection === 'birthdayLove') {
+    // small timeout to ensure layout settled
+    setTimeout(() => showStickers('birthdayLove'), 80);
+  }
 
 // Function to show birthday love screen - used as direct redirect from letter
 function showBirthdayLove() {
   currentSection = "birthdayLove";
   modal.style.display = "none";
   modalBody.innerHTML = "";
-  // Hide stickers
-  hideStickers();
+  // Show stickers for birthday screen using visibility manager
+  showStickers('birthdayLove');
   // Return to default song
   playMusic("music/disarankan di bandung .mp3");
 }
@@ -101,6 +427,8 @@ function playMusic(filename) {
 function showMemorySelection() {
   // Tampilkan menu pilihan kenangan
   tampilMenu();
+  // Show stickers for memory selection
+  showStickers('memorySelection');
   // Mainkan lagu default
   playMusic("music/disarankan di bandung .mp3");
 }
@@ -146,6 +474,14 @@ function tampilMenu() {
   previousSection = currentSection;
   currentSection = "memorySelection";
   
+  // Ensure any side stickers and their interval are cleaned up before showing menu
+  const sideContainer = document.getElementById("sideStickerContainer");
+  if (sideContainer) sideContainer.remove();
+  if (window.sideStickerInterval) {
+    clearInterval(window.sideStickerInterval);
+    window.sideStickerInterval = null;
+  }
+
   // Tampilkan kembali tombol close yang mungkin tersembunyi
   const modalContent = document.querySelector('.modal-content');
   if (modalContent) {
@@ -165,165 +501,15 @@ function tampilMenu() {
     <button class="album-btn" onclick="bukaAlbum('kita')">us 👩🏻‍❤️‍👨🏻</button>
     <button class="album-btn" onclick="tampilVideo()">w memo 🎥</button>
   `;
-
-  // Setup and show sticker batch (outside modal)
-  const stickerContainer = ensureStickerContainer();
-  if (stickerContainer) {
-    // clear any previous interval and content
-    if (window.stickerBatchInterval) clearInterval(window.stickerBatchInterval);
-    stickerContainer.innerHTML = '';
-    stickerContainer.style.display = 'block';      // show container
-    stickerContainer.style.zIndex = '5';           // below modal (.modal-content zIndex set to 20 above)
-    stickerContainer.style.pointerEvents = 'none'; // not interactive
-
-    const modalRect = document.querySelector('.modal-content').getBoundingClientRect();
-    // We'll treat modal area as forbidden rectangle
-    const modalLeft = modalRect.left;
-    const modalTop = modalRect.top;
-    const modalRight = modalRect.right;
-    const modalBottom = modalRect.bottom;
-    const stickerCount = 21;
-    const minSize = 60, maxSize = 90; // user wants clear stickers -> slightly bigger
-    const batchMin = 5, batchMax = 8;
-    const minSpacing = 100; // minimal pixel distance between centers to avoid overlap
-
-    // Checks if candidate sticker overlaps modal or other stickers in this batch
-    function isOverModalOrOthers(x, y, size, placedPositions) {
-      // modal overlap
-      if (x + size > modalLeft && x < modalRight && y + size > modalTop && y < modalBottom) return true;
-      // check against others in placedPositions (array of {x,y,size})
-      for (const p of placedPositions) {
-        const dx = (x + size/2) - (p.x + p.size/2);
-        const dy = (y + size/2) - (p.y + p.size/2);
-        const dist = Math.sqrt(dx*dx + dy*dy);
-        if (dist < minSpacing) return true;
-      }
-      return false;
-    }
-
-    // Helper function to generate non-overlapping positions
-    function generateNonOverlappingPosition(existingPositions, zone, size) {
-      const minSpacing = 80; // minimal spacing between stickers
-      const containerRect = document.querySelector('.container').getBoundingClientRect();
-      const safeZoneY = 100; // vertical safe zone around container
-      
-      // Define zones
-      const zones = {
-        top: {
-          x: [8, window.innerWidth - size - 8],
-          y: [8, modalTop - size - 8]
-        },
-        bottom: {
-          x: [8, window.innerWidth - size - 8],
-          y: [modalBottom + 8, window.innerHeight - size - 8]
-        }
-      };
-
-      const currentZone = zones[zone];
-      let tries = 0;
-      let position;
-
-      do {
-        position = {
-          x: randomInt(currentZone.x[0], currentZone.x[1]),
-          y: randomInt(currentZone.y[0], currentZone.y[1])
-        };
-
-        // Skip if too close to container
-        if (Math.abs(position.y - containerRect.top) < safeZoneY || 
-            Math.abs(position.y - containerRect.bottom) < safeZoneY) {
-          continue;
-        }
-
-        // Check overlap with existing stickers
-        let hasOverlap = false;
-        for (const existing of existingPositions) {
-          const dx = Math.abs(position.x - existing.x);
-          const dy = Math.abs(position.y - existing.y);
-          if (dx < minSpacing && dy < minSpacing) {
-            hasOverlap = true;
-            break;
-          }
-        }
-
-        if (!hasOverlap) return position;
-        tries++;
-      } while (tries < 30);
-
-      // If we failed to find non-overlapping position, try another area
-      return {
-        x: randomInt(currentZone.x[0], currentZone.x[1]),
-        y: randomInt(currentZone.y[0], currentZone.y[1])
-      };
-    }
-
-    // Generate a batch of 10 stickers: 5 top, 5 bottom
-    let used = []; // indexes used already in previous batches
-    function showStickerBatch() {
-      stickerContainer.innerHTML = '';
-      
-      // Compute available pool
-      let available = Array.from({length: stickerCount}, (_, i) => i + 1)
-        .filter(i => !used.includes(i));
-      if (available.length < 10) {
-        used = [];
-        available = Array.from({length: stickerCount}, (_, i) => i + 1);
-      }
-      
-      // Pick exactly 10 stickers randomly
-      const batch = [];
-      for (let k = 0; k < 10; k++) {
-        const idx = randomInt(0, available.length - 1);
-        batch.push(available[idx]);
-        used.push(available[idx]);
-        available.splice(idx, 1);
-      }
-
-      const placed = []; // track all placed positions
-
-      function createSticker(index, zone) {
-        const size = randomInt(minSize, maxSize);
-        const pos = generateNonOverlappingPosition(placed, zone, size);
-        placed.push({ x: pos.x, y: pos.y, size });
-
-        const img = document.createElement('img');
-        img.src = `stiker/st${batch[index]}.jpg`;
-        img.className = 'sticker sticker-visible';
-        img.style.width = size + 'px';
-        img.style.height = 'auto';
-        img.style.left = pos.x + 'px';
-        img.style.top = pos.y + 'px';
-        img.style.opacity = '1';
-        img.style.filter = 'brightness(1.15) saturate(1.15)';
-        img.style.pointerEvents = 'none';
-        img.style.zIndex = '6';
-        
-        const anims = ['sticker-float', 'sticker-rotate', 'sticker-pulse'];
-        img.classList.add(anims[randomInt(0, anims.length - 1)]);
-        return img;
-      }
-
-      // Create 5 top stickers
-      for (let i = 0; i < 5; i++) {
-        const sticker = createSticker(i, 'top');
-        stickerContainer.appendChild(sticker);
-      }
-
-      // Create 5 bottom stickers
-      for (let i = 5; i < 10; i++) {
-        const sticker = createSticker(i, 'bottom');
-        stickerContainer.appendChild(sticker);
-      }
-    }
-
-    // initial draw & start interval
-    showStickerBatch();
-    window.stickerBatchInterval = setInterval(showStickerBatch, 5000);
-  }
+  // show stickers for memory selection (reuse renderer)
+  renderStickers('memorySelection');
 }
 
 // ---------------- SURAT (halaman pembuka) ----------------
 function tampilSurat() {
+  // Hide stickers when showing letter
+  hideStickers();
+  
   // Tambahkan class surat ke modal-content untuk scrolling
   const modalContent = document.querySelector('.modal-content');
   if (modalContent) {
